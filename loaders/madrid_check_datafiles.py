@@ -36,15 +36,19 @@ def get_institution_code(madrid_code):
 
 
 def get_stats(path, is_expense, is_actual):
+    
+    print(f"is_actual: {is_actual}")
     total_external = 0
     total_internal_transfer = 0
 
     filename = os.path.join(path, 'gastos.csv' if is_expense else 'ingresos.csv')
 
     if six.PY2:
-        reader = csv.reader(open(filename, 'rb'), delimiter=';')
+        fr = open(filename, 'rb')
+        reader = csv.reader(fr, delimiter=';')
     else:
-        reader = csv.reader(open(filename, 'r', encoding='iso-8859-1'), delimiter=';')
+        fr = open(filename, 'r', encoding='iso-8859-1')
+        reader = csv.reader(fr, delimiter=';')
 
     for index, line in enumerate(reader):
         if re.match("^#", line[0]):  # Ignore comments
@@ -58,7 +62,6 @@ def get_stats(path, is_expense, is_actual):
 
         if is_expense:
             ec_code = line[8]
-
             # Get institutional code. We ignore sections in autonomous bodies,
             # since they get assigned to different sections in main body but that's
             # not relevant.
@@ -66,7 +69,6 @@ def get_stats(path, is_expense, is_actual):
             # so add them back using zfill.
             institution = get_institution_code(line[0].zfill(3))
             ic_code = institution + (line[2].zfill(3) if institution == '0' else '00')
-
             # Select the amount column to use based on whether we are importing execution
             # or budget data. In the latter case, sometimes we're dealing with the
             # amended budget, sometimes with the just approved one, in which case
@@ -90,7 +92,7 @@ def get_stats(path, is_expense, is_actual):
             total_internal_transfer += amount
         else:
             total_external += amount
-
+    fr.close()
     return total_external, total_internal_transfer
 
 
@@ -100,9 +102,9 @@ if len(sys.argv) < 2:
     sys.exit()
 
 path = sys.argv[1]
-
-year = open(os.path.join(path, '.budget_year'), 'r').read()
-is_actual = (open(os.path.join(path, '.budget_type'), 'r').read() == "execution")
+with open(os.path.join(path, '.budget_year'), 'r') as by, open(os.path.join(path, '.budget_type'), 'r') as bt:
+    year = by.read()
+    is_actual = bt.read() == "execution"
 
 # Open data files and get some basic stats
 incoming_revenues, internal_revenues = get_stats(path, False, is_actual)  # stats for revenues
