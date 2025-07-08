@@ -1,3 +1,8 @@
+// Note: the list of features MUST be sorted by year ascending for this to work.
+// We're stacking features points for a given project on top of each other, and we need
+// the most recent one to be on top. We could sort the data ourselves here, but
+// for now we ask the caller to ensure that.
+//
 function InvestmentsMap(_mapSelector, _legendSelector, data, _token) {
   mapboxgl.accessToken = _token;
   const map = new mapboxgl.Map({
@@ -14,11 +19,14 @@ function InvestmentsMap(_mapSelector, _legendSelector, data, _token) {
   ];
   const colorScale = d3.scaleOrdinal(d3.schemeCategory10).domain(denominations);
 
+  let completedInvestments = [];
+
   let hoveredFeature = null;
 
   let selectedFunctionalCategory = 'all';
   let selectedStatus = 'all';
   let selectedYear = 'all';
+  let selectedSearchQuery = '';
 
   // Create map object
   this.setup = function () {
@@ -39,11 +47,7 @@ function InvestmentsMap(_mapSelector, _legendSelector, data, _token) {
 
   this.selectYear = function (year) {
     // Handle both single years and a year range ("yearFrom,yearTo")
-    if (year.includes(',')) {
-      selectedYear = year.split(',');
-    } else {
-      selectedYear = year;
-    }
+    selectedYear = (year.includes(',') ? year.split(',') : year);
 
     if (mapLoaded) {
       // If still loaded, filtering will happen once that's done
@@ -52,25 +56,15 @@ function InvestmentsMap(_mapSelector, _legendSelector, data, _token) {
 
     // Try to update the tooltip, if stuck, if the selected investment exists across the years
     if (hoveredFeature !== null) {
-
       const pinProject = function () {
-        if (Array.isArray(selectedYear)) {
-          return data.find(
-            (d) =>
-              d.year === selectedYear[1] &&
-              d.project_id === hoveredFeature.properties.project_id
-          );
-        } else {
-          return data.find(
-            (d) =>
-              d.year === selectedYear &&
-              d.project_id === hoveredFeature.properties.project_id
-          );
-        }
+        return data.find(
+          (d) =>
+            d.year === (Array.isArray(selectedYear) ? selectedYear[1] : selectedYear) &&
+            d.project_id === hoveredFeature.properties.project_id
+        );
       }
 
       const obj = pinProject()
-
       if (obj) {
         const tooltip = document.querySelector('#tooltip');
         populateTooltip(tooltip, obj); // The investment exists across the years
@@ -80,16 +74,15 @@ function InvestmentsMap(_mapSelector, _legendSelector, data, _token) {
     }
   };
 
-  // Return an array with the investments currently being displayed
-  this.getDisplayedInvestments = function() {
-    let displayedInvestments = null
-    if (mapLoaded) {
-      displayedInvestments = map.queryRenderedFeatures(null, {
-        layers: ['investmentsLayer']
-      });
-    }
-    return displayedInvestments;
-  };
+  // Return current applied filters
+  this.getFilters = function () {
+    return {
+      searchQuery: selectedSearchQuery,
+      year: selectedYear,
+      categories: selectedFunctionalCategory,
+      status: selectedStatus
+    };
+  }
 
   function setupLayers(mapNode) {
     // Note that we generate separate features (i.e. points) for each year an investment
@@ -100,6 +93,13 @@ function InvestmentsMap(_mapSelector, _legendSelector, data, _token) {
       features: [],
     };
     data.forEach((d, i) => {
+      // Keep track of completed investments, we'll need this for filtering later on.
+      // Note that the same investment shows up in multiple years, first as 'in progress',
+      // finally as 'completed'.
+      if (d.status === 'FINALIZADO') {
+        completedInvestments.push(d.project_id);
+      }
+
       if (d.longitude !== '') {
         investments.features.push({
           type: 'Feature',
@@ -228,9 +228,9 @@ function InvestmentsMap(_mapSelector, _legendSelector, data, _token) {
           </tr>
           <tr>
             ${obj.actual_end_year !== ''
-              ? `<td>Año de finalización</td><td>${obj.actual_end_year}</td>`
-              : `<td>Año finalización previsto</td><td>${obj.expected_end_year}</td>`
-            }
+        ? `<td>Año de finalización</td><td>${obj.actual_end_year}</td>`
+        : `<td>Año finalización previsto</td><td>${obj.expected_end_year}</td>`
+      }
           </tr>
         </table>`;
 
@@ -240,12 +240,12 @@ function InvestmentsMap(_mapSelector, _legendSelector, data, _token) {
             <tr>
               <td>Gasto ejecutado</td>
               <td>${formatAmount(
-                Number(obj.already_spent_amount) +
-                Number(obj.current_year_spent_amount)
-              )}</td>
+        Number(obj.already_spent_amount) +
+        Number(obj.current_year_spent_amount)
+      )}</td>
             </tr>
           </table>
-          ${obj.image_URL ? `<img src="${obj.image_URL}"` : ''}
+          ${obj.image_URL ? `<div class="tooltip-img-wrapper"><span class="tooltip-img-aux-text">Cargando imagen...</span><img src="${obj.image_URL}" /></div>` : ''}
         </div>`;
       tooltip.innerHTML = topHTML + finishedInvestmentHTML;
     } else {
@@ -254,29 +254,29 @@ function InvestmentsMap(_mapSelector, _legendSelector, data, _token) {
             <tr><th>Importes en ${obj.year}</th><th></th></tr>
             <tr>
               <td>Gasto ya ejecutado</td>
-              <td>${formatAmount(Number(obj.already_spent_amount))}</td>
+              <td style="text-align: right;">${formatAmount(Number(obj.already_spent_amount))}</td>
             </tr>
             <tr>
               <td>Presupuesto año en curso</td>
-              <td>${formatAmount(Number(obj.current_year_expected_amount))}</td>
+              <td style="text-align: right;">${formatAmount(Number(obj.current_year_expected_amount))}</td>
             </tr>
             <tr>
               <td>Gasto ejecutado año en curso</td>
-              <td>${formatAmount(Number(obj.current_year_spent_amount))}</td>
+              <td style="text-align: right;">${formatAmount(Number(obj.current_year_spent_amount))}</td>
             </tr>
             <tr>
               <td>Anualidades futuras</td>
-              <td>${formatAmount(
-                Math.abs(
-                  Number(obj.total_expected_amount) -
-                  Number(obj.already_spent_amount) -
-                  Number(obj.current_year_expected_amount)
-                )
-              )}</td>
+              <td style="text-align: right;">${formatAmount(
+        Math.abs(
+          Number(obj.total_expected_amount) -
+          Number(obj.already_spent_amount) -
+          Number(obj.current_year_expected_amount)
+        )
+      )}</td>
             </tr>
             <tr>
               <td>Presupuesto total previsto</td>
-              <td>${formatAmount(Number(obj.total_expected_amount))}</td>
+              <td style="text-align: right;">${formatAmount(Number(obj.total_expected_amount))}</td>
             </tr>
           </table>
         </div>`;
@@ -297,16 +297,6 @@ function InvestmentsMap(_mapSelector, _legendSelector, data, _token) {
     );
   }
 
-  // custom method to find the last update of a project
-  function tooltipInfo() {
-    if (Array.isArray(selectedYear)) {
-      const projects = data.filter(d => d.project_id === hoveredFeature.properties.project_id)
-      return projects.at(-1)
-    } else {
-      return hoveredFeature.properties
-    }
-  }
-
   function showTooltip(e) {
     if (hoveredFeature !== null) {
       setFeatureHover(hoveredFeature.id, false);
@@ -315,7 +305,7 @@ function InvestmentsMap(_mapSelector, _legendSelector, data, _token) {
     setFeatureHover(hoveredFeature, true);
 
     const tooltip = document.querySelector('#tooltip');
-    populateTooltip(tooltip, tooltipInfo());
+    populateTooltip(tooltip, hoveredFeature.properties);
     tooltip.classList.add('hover');
   }
 
@@ -509,13 +499,53 @@ function InvestmentsMap(_mapSelector, _legendSelector, data, _token) {
       }
       return ['==', field, values]; // Use the field name directly
     }
+    // The status filter is a bit trickier than the others: since we have multiple features for each investment,
+    // one per year, stacked on top of each other, if we want to see investments in progress it's not enough
+    // to just remove the features that are marked as completed, because that would reveal the feature just below it,
+    // from the year below, when the investment was in progress. We need to keep track of all investments that are
+    // eventually completed, and filter against that.
+    function getStatusFilter(value) {
+      if (value !== 'EN PROCESO') {
+        return getFilter('status', value);
+      } else {
+        return ['!in', 'project_id', ...completedInvestments];
+      }
+    }
 
+    // We want to throw an event when the data in the map has changed, but the setFilter() operation
+    // is asynchronous, so we need to set up a one-off listener to wait for completion.
+    const onIdle = () => {
+      map.off('idle', onIdle);
+      throwVisibleDataChangedEvent();
+    };
+    map.on('idle', onIdle);
     map.setFilter('investmentsLayer', [
       'all',
       getFilter('functional_category', selectedFunctionalCategory),
-      getFilter('status', selectedStatus),
+      getStatusFilter(selectedStatus),
       getFilter('year', selectedYear),
     ]);
+  }
+
+  // Go through all the features (not just the visible ones), setting a property indicating
+  // whether they match the search query. Since the property is set and remains there,
+  // we don't need to call this again when changing year or category or other filters.
+  // (The alternative would be to iterate through visible features, but then we have to
+  // keep calling this all the time, and there was some race condition or something
+  // generating some weird behaviour I couldn't fix easily.)
+  function filterSearchResults(searchQuery) {
+    const sourceFeatures = map.querySourceFeatures('investments');
+    sourceFeatures.forEach((d) => {
+      let search =
+        normalizeString(d.properties.description).includes(searchQuery) ||
+        normalizeString(d.properties.area_name).includes(searchQuery);
+      map.setFeatureState(
+        { source: 'investments', id: d.id },
+        { search: search }
+      );
+    });
+    selectedSearchQuery = searchQuery;
+    throwVisibleDataChangedEvent();
   }
 
   function setupInputText(mapNode) {
@@ -547,6 +577,12 @@ function InvestmentsMap(_mapSelector, _legendSelector, data, _token) {
         filterSearchResults(normalizeString(e.target.value));
         unstickTooltip(); // Hide if open, as the clicked item may disappear
       });
+  }
+
+  // Let the container know that the visible data has changed.
+  function throwVisibleDataChangedEvent() {
+    const mapNode = document.querySelector("#" + _mapSelector);
+    $(mapNode).trigger('visible-data-change', (Array.isArray(selectedYear) ? selectedYear.join(',') : selectedYear));
   }
 
   function normalizeString(str) {

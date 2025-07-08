@@ -17,12 +17,15 @@
 
 <script type="text/javascript">
   $(function () {
+    // List of main investments data, SORTED BY YEAR ASCENDING.
+    // The visualization implementation expects the data to be sorted by year ascending,
+    // and our breakdown calculations below also.
     var data = [
     {% for main_investment in all_main_investments %}
       {
         "project_id": '{{ main_investment.project_id }}',
         "year": '{{ main_investment.budget.year }}',
-        "description": '{{ main_investment.description }}',
+        "description": '{{ main_investment.description if main_investment.status=="EN PROCESO" else main_investment.description+" ✔️" }}',
         "start_year": '{{ main_investment.start_year }}',
         "expected_end_year": '{{ main_investment.expected_end_year }}',
         "actual_end_year": '{{ "" if main_investment.actual_end_year==None else main_investment.actual_end_year }}',
@@ -30,16 +33,18 @@
         "address": '{{ main_investment.address }}',
         "latitude": '{{ main_investment.latitude }}',
         "longitude": '{{ main_investment.longitude }}',
+        "entity_name": '{{ main_investment.section_name if main_investment.entity_name=="AYUNTAMIENTO" else main_investment.entity_name }}',
         "functional_category": '{{ main_investment.functional_category.description }}',
         "already_spent_amount": '{{ main_investment.already_spent_amount/100 }}',
         "current_year_expected_amount": '{{ main_investment.current_year_expected_amount/100 }}',
-        "current_year_spent_amount": '{{ 0 if main_investment.current_year_spent_amount==None else main_investment.current_year_spent_amount/100 }}',
+        "current_year_spent_amount": '{{ main_investment.current_year_spent_amount/100 }}',
         "total_expected_amount": '{{ main_investment.total_expected_amount/100 }}',
         "status": '{{ main_investment.status }}',
         "image_URL": '{{ main_investment.image_URL }}',
       },
     {% endfor %}
     ];
+    var completedInvestmentsIds = data.filter(d => d.status == "FINALIZADO").map(d => d.project_id);
 
     const investmentsMap =
       new InvestmentsMap(
@@ -48,6 +53,101 @@
         data,
         "pk.eyJ1IjoiY2l2aW8iLCJhIjoiY2t6d3Z2MmluMDBrZTJ3cHZpMHh3NXVpYSJ9.DyjAQjftonNZuiccfL_55w");
     investmentsMap.setup();
+
+    // Calculate breakdowns of all visible investments across three dimensions
+    function refreshBreakdowns(breakdownYear) {
+      // Add the expenditures of an investment to a breakdown structure, creating nodes as needed.
+      function addExpenditure(summary, investment, year) {
+        summary["expense"] = summary["expense"] || {};
+
+        // Add expenditures at the parent level
+        summary["expense"][year] = summary["expense"][year] || 0;
+        summary["expense"][year] += Number(investment.total_expected_amount) * 100;
+
+        // Add expenditures at the investment level
+        summary["expense"]["actual_" + year] = summary["expense"]["actual_" + year] || 0;
+        summary["expense"]["actual_" + year] += (Number(investment.already_spent_amount) + Number(investment.current_year_spent_amount)) * 100;
+      }
+
+      function createBreakdown(investments, field_name) {
+        let breakdown = {
+          "years": {},
+          "sub": {}
+        };
+
+        // Initialize the years columns
+        // This part of the breakdown structure is probably used only by grid formatters, e.g. to adjust
+        // for inflation or to calculate per-capita amounts, which is not applicable in the main
+        // investments page. (It couldn't be done if we want to have a year range, actually.) But we
+        // can't just not set it, we need to put something here. (But my memory of this now is fuzzy!)
+        breakdown["years"][breakdownYear] = breakdownYear;
+        breakdown["years"]["actual_" + breakdownYear] = breakdownYear;
+
+        Object.keys(groupedInvestments).forEach(projectId => {
+          const investment = groupedInvestments[projectId];
+          const investment_year = investment.year;
+          const field_value = investment[field_name];
+
+          // Add node at the top level
+          breakdown["sub"][field_value] = breakdown["sub"][field_value] || { "sub": {} };
+          addExpenditure(breakdown["sub"][field_value], investment, breakdownYear);
+
+          // And add node at the bottom (investment) level
+          breakdown["sub"][field_value]["sub"][investment.description] = {};
+          addExpenditure(breakdown["sub"][field_value]["sub"][investment.description], investment, breakdownYear);
+        });
+        return breakdown;
+      }
+
+      // We want to group the items based on their project id, so we retain only one item per project.
+      // We rely on the data being sorted by year ascending, so we overwrite the existing items.
+      // But we want to show the same investments as in the map, so we apply the same filters.
+      // (We did try to use Mapbox's `querySourceFeatures` and `queryRenderedFeatures`, but there was no
+      //  way to get all the data from the map, including unloaded tiles, so we're forced to redo the filtering.)
+      let groupedInvestments = {};
+      let filters = investmentsMap.getFilters();
+      data.forEach(investment => {
+        // Apply filters
+        if (filters.categories !== 'all' && !filters.categories.includes(investment.functional_category)) {
+          return;
+        }
+        if (filters.status === 'FINALIZADO' && investment.status !== 'FINALIZADO') {
+          return;
+        }
+        // Note that filtering completed investments is trickier since there's a stack of features on top of each other
+        if (filters.status === 'EN PROCESO' && !completedInvestmentsIds.includes(investment.project_id)) {
+          return;
+        }
+        if (filters.searchQuery !== '' &&
+          !investment.description.toLowerCase().includes(filters.searchQuery) &&
+          !investment.area_name.toLowerCase().includes(filters.searchQuery)) {
+          return;
+        }
+
+        // Group the investments in the year range
+        if (investment.year >= filters.year[0] && investment.year <= filters.year[1]) {
+          groupedInvestments[investment.project_id] = investment;
+        }
+      });
+
+      // Create a breakdown data structure by iterating over the grouped investments
+      const areaBreakdown = createBreakdown(groupedInvestments, 'area_name');
+      const policyBreakdown = createBreakdown(groupedInvestments, 'functional_category');
+      const departmentBreakdown = createBreakdown(groupedInvestments, 'entity_name');
+
+      // Replace the original breakdowns and redraw the grid
+      window.breakdowns = {
+        'area':       areaBreakdown,
+        'policy':     policyBreakdown,
+        'department': departmentBreakdown,
+      };
+      $('#investments-viz').trigger('trigger-grid-redraw');
+    }
+
+    function onVisibleDataChange(e, year) {
+      refreshBreakdowns(year);
+    }
+    $('#investments-viz-map').bind('visible-data-change', onVisibleDataChange);
 
     function onYearChange(e, year) {
       investmentsMap.selectYear(year);
