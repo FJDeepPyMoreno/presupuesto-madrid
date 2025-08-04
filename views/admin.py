@@ -65,12 +65,12 @@ if six.PY2:
     PYTHON_VENV = "env"
 else:
     PYTHON = "python3"
-    PYTHON_VENV = "venv_ayto_madrid_36"
+    PYTHON_VENV = "env3"
 
 # Add global variable to control whether we should dry run git commands, useful for development.
 # In my localhost I also have `scripts/git` defined as `echo 'hello world'`. But editing inflation,
 # population and the glossary won't work if we don't have a real `git` command.
-IS_GIT_DRY_RUN = True
+IS_GIT_DRY_RUN = False
 
 class AdminException(Exception):
     pass
@@ -1031,7 +1031,7 @@ def _execute_loading_task(cue, *management_commands):
     cmd = (
         "export PYTHONIOENCODING=utf-8 "
         "&& cd %s "
-        "&& . ../%s/bin/activate "
+        "&& source %s/bin/activate "
     )% (ROOT_PATH, PYTHON_VENV)
 
     for management_command in management_commands:
@@ -1289,7 +1289,7 @@ def _write_temp(temp_folder_path, filename, content, encoding='utf-8'):
 
 def _touch(file_path):
     # The scripts/touch executable must be manually deployed and setuid'ed
-    cmd = "cd %s && touch %s" % (THEME_PATH, file_path)
+    cmd = "cd %s && scripts/touch %s" % (THEME_PATH, file_path)
 
     output, error = _execute_cmd(cmd)
 
@@ -1312,7 +1312,7 @@ def _remove(folder_path, filename):
     target = os.path.join(folder_path, filename)
 
     # The scripts/rm executable must be manually deployed and setuid'ed
-    cmd = ("cd %s " "&& rm -f %s") % (THEME_PATH, target)
+    cmd = ("cd %s " "&& scripts/rm -f %s") % (THEME_PATH, target)
 
     output, error = _execute_cmd(cmd)
 
@@ -1330,8 +1330,8 @@ def _copy(source_path, destination_path, source_filename, destination_filename=N
     if not os.path.exists(destination_path):
         os.makedirs(destination_path)
 
-    # The cp executable must be manually deployed and setuid'ed
-    cmd = ("cd %s " "&& cp -f %s %s") % (THEME_PATH, source, destination)
+    # The scripts/cp executable must be manually deployed and setuid'ed
+    cmd = ("cd %s " "&& scripts/cp -f %s %s") % (THEME_PATH, source, destination)
 
     output, error = _execute_cmd(cmd)
 
@@ -1348,8 +1348,8 @@ def _reset_git_status():
 
     cmd = (
         "cd %s "
-        "&& git fetch "
-        "&& git reset --hard origin/master "
+        "&& scripts/git fetch "
+        "&& scripts/git reset --hard origin/master "
      ) % (THEME_PATH, )
 
     output, error = _execute_cmd(cmd)
@@ -1363,7 +1363,7 @@ def _reset_git_status():
 def _read(file_path):
     cmd = (
         "cd %s "
-        "&& git show origin/master:%s"
+        "&& scripts/git show origin/master:%s"
     ) % (THEME_PATH, file_path)
     output, error = _execute_cmd(cmd)
 
@@ -1381,10 +1381,10 @@ def _commit(path, commit_message):
     # Why `diff-index`? See https://stackoverflow.com/a/8123841
     cmd = (
         "cd %s"
-        "&& git add -A %s "
-        "&& git diff-index --quiet HEAD "
-        "|| git commit -m \"%s\n\nChange performed on the admin console.\" "
-        "&& git push"
+        "&& scripts/git add -A %s "
+        "&& scripts/git diff-index --quiet HEAD "
+        "|| scripts/git commit -m \"%s\n\nChange performed on the admin console.\" "
+        "&& scripts/git push"
     ) % (THEME_PATH, path, commit_message)
 
     output, error = _execute_cmd(cmd)
