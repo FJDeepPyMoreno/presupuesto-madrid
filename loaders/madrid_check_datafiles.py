@@ -34,10 +34,7 @@ def get_institution_code(madrid_code):
     institution_code = madrid_code if madrid_code != '001' else '000'
     return institution_code[2]
 
-
 def get_stats(path, is_expense, is_actual):
-    
-    print(f"is_actual: {is_actual}")
     total_external = 0
     total_internal_transfer = 0
 
@@ -67,7 +64,7 @@ def get_stats(path, is_expense, is_actual):
             # not relevant.
             # Note: in the most recent 2016 data the leading zeros were missing,
             # so add them back using zfill.
-            institution = get_institution_code(line[0].zfill(3))
+            institution = get_institution_code(line[0].zfill(3)) 
             ic_code = institution + (line[2].zfill(3) if institution == '0' else '00')
             # Select the amount column to use based on whether we are importing execution
             # or budget data. In the latter case, sometimes we're dealing with the
@@ -76,8 +73,7 @@ def get_stats(path, is_expense, is_actual):
             budget_position = 12 if len(line) > 11 else 10
             amount = parse_spanish_amount(line[15 if is_actual else budget_position])
         else:
-            ec_code = line[4]
-
+            ec_code = line[4]   
             ic_code = get_institution_code(line[0].zfill(3)) + '00'
 
             # Select the column from which to read amounts. See similar comment above.
