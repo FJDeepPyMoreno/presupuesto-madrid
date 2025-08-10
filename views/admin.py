@@ -1214,23 +1214,29 @@ def _arrange_payments(data_files_path):
 
 # Network helpers
 def _fetch(url):
+    response = None
     try:
         request = Request(url, headers={'User-Agent': 'Mozilla'})
         response = urlopen(request)
-
         # Convert to string based on Python version
         if six.PY2:
             page = response.read()
         else:
             page = response.read().decode('utf-8', errors='replace')
+            print("retrieved HTTP page 2025 ...")
+            print(page[:500])
+            print(f"'page' is {str(type(page))}")
 
     except IOError as error:
         raise AdminException("Page at '%s' couldn't be fetched: %s" % (url, cgi.escape(str(error))))
-
+    finally:
+        if response is not None:
+            response.close()
     return page
 
 
 def _download(url, temp_folder_path, filename):
+    response = None
     try:
         response = urlopen(Request(url, headers={'User-Agent': 'Mozilla'}))
 
@@ -1241,13 +1247,14 @@ def _download(url, temp_folder_path, filename):
         else:
             with open(os.path.join(temp_folder_path, filename), "wb") as f:
                 f.write(response.read())
-
     except IOError as error:
         raise AdminException(
             "File at '%s' couldn't be downloaded: %s" % (url, str(error))
         )
-
-
+    finally:
+        if response is not None:
+            response.close()
+            
 # Filesystem helpers
 def _create_temp_folder():
     base_path = TEMP_BASE_PATH
@@ -1451,14 +1458,17 @@ def _parse_HTML_file(page):
 def _get_files(page):
     doc = _parse_HTML_file(page)
     links = doc.find_all("a", class_="ico-csv")
-
+    print("links ....")
+    print(links)
     return [DATA_BASE_URL + link["href"] for link in links]
 
 def _get_files_historical(page, year):
     doc = _parse_HTML_file(page)
+    # doc is BeautifulSoup(page, "html.parser")
     year_block = doc.find("p", class_="info-title", text=re.compile(year)).parent.findNext("ul")
     links = year_block.find_all("a", class_="ico-csv")
-
+    print("links ....")
+    print(links)
     return [DATA_BASE_URL + link["href"] for link in links]
 
 
