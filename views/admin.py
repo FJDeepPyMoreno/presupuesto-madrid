@@ -3,6 +3,7 @@
 # Some environment setup is needed for this to work.
 # See https://github.com/civio/presupuesto-management/issues/1235#issuecomment-1614674582 for details.
 
+import urllib.parse
 from bs4 import BeautifulSoup
 from datetime import datetime
 from django.http import HttpResponse
@@ -70,7 +71,7 @@ else:
 # Add global variable to control whether we should dry run git commands, useful for development.
 # In my localhost I also have `scripts/git` defined as `echo 'hello world'`. But editing inflation,
 # population and the glossary won't work if we don't have a real `git` command.
-IS_GIT_DRY_RUN = False
+IS_GIT_DRY_RUN = True
 
 class AdminException(Exception):
     pass
@@ -133,7 +134,19 @@ def admin_execution(request):
 def admin_execution_retrieve(request):
     month = _get_month(request.GET)
     year = _get_year(request.GET)
+    is_scrap = _get_is_scrap(request.GET)
     body, status = _retrieve_execution(month, year)
+    return _json_response(body, status)
+
+@never_cache
+def admin_execution_retrieve_manual(request):
+    month = _get_month(request.GET)
+    year = _get_year(request.GET)
+    is_scrap = _get_is_scrap(request.GET)
+    files_json = json.loads(request.body)
+    files_json = {k:v for k, v in files_json.items() if v} # clean empty values
+
+    body, status = _retrieve_execution_manual(month, year, files_json)
     return _json_response(body, status)
 
 @never_cache
@@ -368,6 +381,9 @@ def _retrieve_execution(month, year):
     data_url = _get_execution_url(year)
     return _scrape_execution(data_url, month, year)
 
+def _retrieve_execution_manual(month, year, files_json):
+    data_url = None
+    return _scrape_execution(data_url, month, year, files_json)
 
 def _review_execution():
     # Pick up the most recent downloaded files
@@ -634,24 +650,41 @@ def _scrape_general(url, year):
 
     return (body, status)
 
-
-def _scrape_execution(url, month, year):
+def _scrape_execution(url, month, year, files_json={}):
     month = str(month)
     year = str(year)
-
-    if not url:
+    if not files_json and not url:
         body = {"result": "error", "message": "<p>Nada que descargar.</p>"}
         status = 400
         return (body, status)
 
     try:
         # Read the given page
-        page = _fetch(url)
+        if not files_json:
+            page = _fetch(url)
 
-        # Build the list of linked files
-        is_historical = (url == EXECUTION_URL['historical'])
-        files = _get_files_historical(page, year) if is_historical else _get_files(page)
-
+            # Build the list of linked files
+            is_historical = (url == EXECUTION_URL['historical'])
+            files = _get_files_historical(page, year) if is_historical else _get_files(page)
+        else:
+            error = False
+            msg = ""
+            files = []
+            for file_name in ("ingresos", "gastos", "inversiones", "ingresosEliminacionesBruto", "gastosEliminacionesBruto"):
+                value_file = files_json.get(file_name)
+                if not value_file:
+                    error = True
+                    msg += f"<p>Falta el fichero: {file_name}</p>"
+                else:
+                    result = urllib.parse.urlparse(value_file)
+                    if not all([result.scheme, result.netloc, result.path]):
+                        error = True
+                        msg += f"<p>Ruta del fichero: {file_name} no válida</p>"
+                    files.append(value_file)
+            if error:
+                body = {"result": "error", "message": msg}
+                status = 400
+                return (body, status)
         # Create the target folder
         temp_folder_path = _create_temp_folder()
 
@@ -1422,6 +1455,8 @@ def _get_content(params):
 def _get_month(params):
     return int(params.get("month", "0"))
 
+def _get_is_scrap(params):
+    return params.get("scrap", "true").lower() == "true"
 
 def _get_year(params):
     current_year = datetime.today().year
