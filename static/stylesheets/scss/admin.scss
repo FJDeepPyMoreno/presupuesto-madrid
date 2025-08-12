@@ -17,4 +17,18 @@
   margin: 3rem auto 3rem auto;
 }
 
+.form-group-manual {
+  display: flex;
+  align-items: center; /* This vertically aligns the label and input */
+  gap: 1rem; /* Adds space between the label and input */
+
+  label {
+    flex-shrink: 0; /* Prevents the label from shrinking */
+  }
+
+  input {
+    flex-grow: 1; /* Allows the input to fill the remaining space */
+  }
+}
+
 @import url("https://cdn.jsdelivr.net/npm/handsontable@6.2.2/dist/handsontable.full.min.css");

@@ -15,8 +15,16 @@
         <div class="panel">
           <div class="panel-content">
             <h3>1. Descargar datos</h3>
-            <p>El primer paso es descargar los ficheros de datos del portal de Datos Abiertos de Madrid. Para ello, selecciona el mes al que corresponden los últimos datos (ya que el portal actualmente no lo indica) y especifica el año de los datos que quieres descargar (por defecto estamos utilizando el ejercicio en curso). Al pulsar el botón 'Descargar', los datos se bajarán del portal en unos segundos y se guardarán en el servidor, listos para el siguiente paso.</p>
-
+            <p>
+              El primer paso es descargar los ficheros de datos del portal de Datos
+              Abiertos de Madrid. Para ello, selecciona el mes al que corresponden los
+              últimos datos (ya que el portal actualmente no lo indica) y especifica el
+              año de los datos que quieres descargar (por defecto estamos utilizando el
+              ejercicio en curso). Al pulsar el botón 'Descargar', los datos se bajarán
+              del portal en unos segundos y se guardarán en el servidor, listos para el
+              siguiente paso.
+            </p>
+        
             <form id="data-download">
               <div class="form-group">
                 <label for="month">{{ _('Selecciona mes') }}</label>
@@ -44,15 +52,109 @@
                   <option value="{{current_year}}" selected>{{current_year}}</option>
                 </select>
               </div>
-              <button type="submit" class="btn btn-default btn-primary" >{{ _('Descargar') }}</button>
             </form>
+        
+            <ul id="tabs" class="nav nav-tabs nav-tabs-centered" role="tablist">
+              <li role="scrap" class="active">
+                <a href="#scrap" role="tab">{{ _('Scrap') }}</a>
+              </li>
+              <li role="manual">
+                <a href="#manual" role="tab">{{ _('Manual') }}</a>
+              </li>
+            </ul>
+        
+            <div id="scrap-form">
+              <form id="data-download-scrap">
+                <button
+                  type="submit"
+                  class="btn btn-default btn-primary"
+                  id="scrap-download-button"
+                >
+                  {{ _('Descargar') }}
+                </button>
+              </form>
+            </div>
+        
+            <div id="manual-form" style="display: none;">
+              <form id="data-download-manual">
+                <div class="form-group-manual">
+                  <label for="input-ingresos">Ingresos</label>
+                  <input type="text" class="form-control" id="input-ingresos" name="ingresos" />
+                </div>
+                <div class="form-group-manual">
+                  <label for="input-gastos">Gastos</label>
+                  <input type="text" class="form-control" id="input-gastos" name="gastos" />
+                </div>
+                <div class="form-group-manual">
+                  <label for="input-inversiones">Inversiones</label>
+                  <input type="text" class="form-control" id="input-inversiones" name="inversiones" />
+                </div>
+                <div class="form-group-manual">
+                  <label for="input-ingresos-eliminaciones-bruto">Ingresos eliminaciones bruto</label>
+                  <input type="text" class="form-control" id="input-ingresos-eliminaciones-bruto" name="ingresos-eliminaciones-bruto" />
+                </div>
+                <div class="form-group-manual">
+                  <label for="input-gastos-eliminaciones-bruto">Gastos eliminaciones bruto</label>
+                  <input type="text" class="form-control" id="input-gastos-eliminaciones-bruto" name="gastos-eliminaciones-bruto" />
+                </div>
+                <button
+                  type="submit"
+                  class="btn btn-default btn-primary"
+                  id="manual-download-button"
+                >
+                  {{ _('Descargar') }}
+                </button>
+              </form>
+            </div>
+        
             <div id="data-download-output" class="data-output">
-              <div class="loading"><img src="{{ static('assets/loader.png') }}"> Descargando datos</div>
+              <div class="loading">
+                <img src="{{ static('assets/loader.png') }}" /> Descargando datos
+              </div>
               <div class="output"></div>
             </div>
           </div>
         </div>
-
+        
+        <script>
+          // Get references to the tab links
+          const scrapTabLink = document.querySelector('[role="scrap"] a');
+          const manualTabLink = document.querySelector('[role="manual"] a');
+        
+          // Get references to the form containers
+          const scrapForm = document.getElementById('scrap-form');
+          const manualForm = document.getElementById('manual-form');
+        
+          // Add click event listeners to the tab links
+          scrapTabLink.addEventListener('click', (event) => {
+            event.preventDefault(); // Prevent the default anchor link behavior
+            // Update the active class for styling
+            document.querySelector('[role="scrap"]').classList.add('active');
+            document.querySelector('[role="manual"]').classList.remove('active');
+        
+            // Show the scrap form and hide the manual form
+            scrapForm.style.display = 'block';
+            manualForm.style.display = 'none';
+          });
+        
+          manualTabLink.addEventListener('click', (event) => {
+            event.preventDefault(); // Prevent the default anchor link behavior
+            // Update the active class for styling
+            document.querySelector('[role="manual"]').classList.add('active');
+            document.querySelector('[role="scrap"]').classList.remove('active');
+        
+            // Show the manual form and hide the scrap form
+            manualForm.style.display = 'block';
+            scrapForm.style.display = 'none';
+          });
+        
+          // Initial state: ensure scrap form is visible and manual is hidden on page load
+          document.addEventListener('DOMContentLoaded', (event) => {
+            scrapForm.style.display = 'block';
+            manualForm.style.display = 'none';
+          });
+        </script>
+        
         <div class="panel">
           <div class="panel-content">
             <h3>2. Revisar datos</h3>

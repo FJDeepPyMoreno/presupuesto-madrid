@@ -20,6 +20,7 @@ EXTRA_URLS = (
 
     url(r'^admin/execution$', theme_views.admin_execution, name='admin_execution'),
     url(r'^admin/execution/retrieve$', theme_views.admin_execution_retrieve),
+    url(r'^admin/execution/retrieve_manual$', theme_views.admin_execution_retrieve_manual),
     url(r'^admin/execution/review$', theme_views.admin_execution_review),
     url(r'^admin/execution/load$', theme_views.admin_execution_load),
 
