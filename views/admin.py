@@ -1458,8 +1458,6 @@ def _parse_HTML_file(page):
 def _get_files(page):
     doc = _parse_HTML_file(page)
     links = doc.find_all("a", class_="ico-csv")
-    print("links ....")
-    print(links)
     return [DATA_BASE_URL + link["href"] for link in links]
 
 def _get_files_historical(page, year):
