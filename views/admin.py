@@ -12,7 +12,7 @@ from django.utils.translation import ugettext as _
 from django.views.decorators.cache import never_cache
 from project.settings import ROOT_PATH, THEME_PATH, HTTPS_PROXY, HTTP_PROXY
 from budget_app.views.helpers import _set_meta_fields
-
+from pprint import pprint
 import base64
 import cgi
 import csv
@@ -66,10 +66,11 @@ if six.PY2:
     PYTHON_VENV = "env"
 else:
     PYTHON = "python3"
-    PYTHON_VENV = "env3"
+    # PYTHON_VENV = "env3"
+    PYTHON_VENV = "/home/pacmoremad/Documents/Python/AYTO_MADRID/Ayto_Madrid_presup/venv_ayto_madrid_36"
 
 # Add global variable to control whether we should dry run git commands, useful for development.
-# In my localhost I also have `scripts/git` defined as `echo 'hello world'`. But editing inflation,
+# In my localhost I also have `git` defined as `echo 'hello world'`. But editing inflation,
 # population and the glossary won't work if we don't have a real `git` command.
 IS_GIT_DRY_RUN = True
 
@@ -145,7 +146,6 @@ def admin_execution_retrieve_manual(request):
     is_scrap = _get_is_scrap(request.GET)
     files_json = json.loads(request.body)
     files_json = {k:v for k, v in files_json.items() if v} # clean empty values
-
     body, status = _retrieve_execution_manual(month, year, files_json)
     return _json_response(body, status)
 
@@ -661,12 +661,14 @@ def _scrape_execution(url, month, year, files_json={}):
     try:
         # Read the given page
         if not files_json:
+            # Scrapping retrieval
             page = _fetch(url)
 
             # Build the list of linked files
             is_historical = (url == EXECUTION_URL['historical'])
             files = _get_files_historical(page, year) if is_historical else _get_files(page)
         else:
+            # Manual retrieval
             error = False
             msg = ""
             files = []
@@ -1064,7 +1066,7 @@ def _execute_loading_task(cue, *management_commands):
     cmd = (
         "export PYTHONIOENCODING=utf-8 "
         "&& cd %s "
-        "&& source %s/bin/activate "
+        "&& . %s/bin/activate "
     )% (ROOT_PATH, PYTHON_VENV)
 
     for management_command in management_commands:
@@ -1328,8 +1330,8 @@ def _write_temp(temp_folder_path, filename, content, encoding='utf-8'):
 
 
 def _touch(file_path):
-    # The scripts/touch executable must be manually deployed and setuid'ed
-    cmd = "cd %s && scripts/touch %s" % (THEME_PATH, file_path)
+    # The touch executable must be manually deployed and setuid'ed
+    cmd = "cd %s && touch %s" % (THEME_PATH, file_path)
 
     output, error = _execute_cmd(cmd)
 
@@ -1351,8 +1353,8 @@ def _write(target_path, filename, content):
 def _remove(folder_path, filename):
     target = os.path.join(folder_path, filename)
 
-    # The scripts/rm executable must be manually deployed and setuid'ed
-    cmd = ("cd %s " "&& scripts/rm -f %s") % (THEME_PATH, target)
+    # The rm executable must be manually deployed and setuid'ed
+    cmd = ("cd %s " "&& rm -f %s") % (THEME_PATH, target)
 
     output, error = _execute_cmd(cmd)
 
@@ -1370,8 +1372,8 @@ def _copy(source_path, destination_path, source_filename, destination_filename=N
     if not os.path.exists(destination_path):
         os.makedirs(destination_path)
 
-    # The scripts/cp executable must be manually deployed and setuid'ed
-    cmd = ("cd %s " "&& scripts/cp -f %s %s") % (THEME_PATH, source, destination)
+    # The cp executable must be manually deployed and setuid'ed
+    cmd = ("cd %s " "&& cp -f %s %s") % (THEME_PATH, source, destination)
 
     output, error = _execute_cmd(cmd)
 
@@ -1380,7 +1382,7 @@ def _copy(source_path, destination_path, source_filename, destination_filename=N
 
 
 # Git helpers
-# The scripts/git and scripts/git-* executables must be manually deployed and setuid'ed
+# The git and git-* executables must be manually deployed and setuid'ed
 def _reset_git_status():
     # Do nothing if dry run is enabled
     if IS_GIT_DRY_RUN:
@@ -1388,8 +1390,8 @@ def _reset_git_status():
 
     cmd = (
         "cd %s "
-        "&& scripts/git fetch "
-        "&& scripts/git reset --hard origin/master "
+        "&& git fetch "
+        "&& git reset --hard origin/master "
      ) % (THEME_PATH, )
 
     output, error = _execute_cmd(cmd)
@@ -1403,7 +1405,7 @@ def _reset_git_status():
 def _read(file_path):
     cmd = (
         "cd %s "
-        "&& scripts/git show origin/master:%s"
+        "&& git show origin/master:%s"
     ) % (THEME_PATH, file_path)
     output, error = _execute_cmd(cmd)
 
@@ -1421,10 +1423,10 @@ def _commit(path, commit_message):
     # Why `diff-index`? See https://stackoverflow.com/a/8123841
     cmd = (
         "cd %s"
-        "&& scripts/git add -A %s "
-        "&& scripts/git diff-index --quiet HEAD "
-        "|| scripts/git commit -m \"%s\n\nChange performed on the admin console.\" "
-        "&& scripts/git push"
+        "&& git add -A %s "
+        "&& git diff-index --quiet HEAD "
+        "|| git commit -m \"%s\n\nChange performed on the admin console.\" "
+        "&& git push"
     ) % (THEME_PATH, path, commit_message)
 
     output, error = _execute_cmd(cmd)
@@ -1500,8 +1502,6 @@ def _get_files_historical(page, year):
     # doc is BeautifulSoup(page, "html.parser")
     year_block = doc.find("p", class_="info-title", text=re.compile(year)).parent.findNext("ul")
     links = year_block.find_all("a", class_="ico-csv")
-    print("links ....")
-    print(links)
     return [DATA_BASE_URL + link["href"] for link in links]
 
 
