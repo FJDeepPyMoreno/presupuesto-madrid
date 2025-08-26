@@ -69,7 +69,7 @@ else:
 # Add global variable to control whether we should dry run git commands, useful for development.
 # In my localhost I also have `scripts/git` defined as `echo 'hello world'`. But editing inflation,
 # population and the glossary won't work if we don't have a real `git` command.
-IS_GIT_DRY_RUN = False
+IS_GIT_DRY_RUN = True
 
 class AdminException(Exception):
     pass
