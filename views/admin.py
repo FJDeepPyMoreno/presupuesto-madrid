@@ -69,7 +69,7 @@ else:
 # Add global variable to control whether we should dry run git commands, useful for development.
 # In my localhost I also have `scripts/git` defined as `echo 'hello world'`. But editing inflation,
 # population and the glossary won't work if we don't have a real `git` command.
-IS_GIT_DRY_RUN = True
+IS_GIT_DRY_RUN = False
 
 class AdminException(Exception):
     pass
@@ -1374,8 +1374,10 @@ def _read(file_path):
 
 def _commit(path, commit_message):
     # Do nothing if dry run is enabled
-    if IS_GIT_DRY_RUN:
-        return "Dry run enabled: skipping git commit..."
+    if True:
+        return "Skipping git commit..."
+    # if IS_GIT_DRY_RUN:
+    #     return "Dry run enabled: skipping git commit..."
 
     # Why `diff-index`? See https://stackoverflow.com/a/8123841
     cmd = (
