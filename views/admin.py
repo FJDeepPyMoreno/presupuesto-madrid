@@ -1271,23 +1271,32 @@ def _fetch(url):
 
 
 def _download(url, temp_folder_path, filename):
-    response = None
     try:
-        response = urlopen(Request(url, headers={'User-Agent': 'Mozilla'}))
+        response_rb = None
+        response    = urlopen(Request(url, headers={'User-Agent': 'Mozilla'}))
 
         # In the old Python 2 code we used the same method to create a temporary file
         # with some minor content (text) and to save a downloaded file. Not anymore.
         if six.PY2:
             _write_temp(temp_folder_path, filename, response.read(), 'iso-8859-1')
         else:
-            with open(os.path.join(temp_folder_path, filename), "wb") as f:
-                f.write(response.read())
+            # Con python3.6 no se puede usar la libreria chardet. Hay que detectar los 
+            # encodings a mano
+            response_rb  = response.read()
+            _            = response_rb.decode('utf-8') # Si es iso-8859-1 UnicodeError
+            enc          = 'utf-8'
+            if response_rb[:3] == b'\xef\xbb\xbf':  # Caso de utf-8 con BOM
+                response_rb = response_rb[3:]
+    except UnicodeDecodeError: # Encoding no es utf-8, probable iso-8859-1
+        enc          = 'iso-8859-1'
     except IOError as error:
         raise AdminException(
             "File at '%s' couldn't be downloaded: %s" % (url, str(error))
         )
     finally:
-        if response is not None:
+        if response_rb is not None:
+            with open(os.path.join(temp_folder_path, filename), "wb", encoding=enc) as f:
+                f.write(response_rb)
             response.close()
             
 # Filesystem helpers

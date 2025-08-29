@@ -138,6 +138,14 @@ class MadridBudgetLoader(SimpleBudgetLoader):
             }
 
     def parse_spanish_amount(self, amount):
+        try:
+            fa = float(amount) 
+            if re.search(r"\d\.\d", amount) and fa > int(fa//1): # Número decimal que no lleva 
+                                                                 # comas y delimitador punto
+                amount = amount.replace('.', ',') # Ejemplo: 200234.78 --> 200234,78
+        except ValueError: # el número lleva comas.
+            amount = amount.replace('.', '') # Ejemplo: 1.245.300,26 --> 1245300,26
+        
         amount = amount.replace('.', '')    # Remove thousands delimiters, if any
         return self._read_english_number(amount.replace(',', '.'))
 
