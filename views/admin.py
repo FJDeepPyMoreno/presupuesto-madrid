@@ -1428,7 +1428,6 @@ def _commit(path, commit_message):
     # En principio, el primer paso ya actualiza el HEAD y las referencias del repo.
     # El flujo de cambios se produce desde el repo a la aplicación.
     return "Skipping git commit..."
-    
     # if IS_GIT_DRY_RUN:
     #     return "Dry run enabled: skipping git commit..."
 
