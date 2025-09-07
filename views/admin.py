@@ -3,6 +3,7 @@
 # Some environment setup is needed for this to work.
 # See https://github.com/civio/presupuesto-management/issues/1235#issuecomment-1614674582 for details.
 
+import urllib.parse
 from bs4 import BeautifulSoup
 from datetime import datetime
 from django.http import HttpResponse
@@ -11,7 +12,7 @@ from django.utils.translation import ugettext as _
 from django.views.decorators.cache import never_cache
 from project.settings import ROOT_PATH, THEME_PATH, HTTPS_PROXY, HTTP_PROXY
 from budget_app.views.helpers import _set_meta_fields
-
+from pprint import pprint
 import base64
 import cgi
 import csv
@@ -59,6 +60,7 @@ PAYMENTS_URL = "https://datos.madrid.es/sites/v/index.jsp?vgnextoid=2fd903751cd5
 TEMP_BASE_PATH = "/tmp/budget_app"
 
 # Select the Python interpreter for external commands based on the version we're running
+
 if six.PY2:
     PYTHON = "python2"
     PYTHON_VENV = "env"
@@ -67,7 +69,7 @@ else:
     PYTHON_VENV = "env3"
 
 # Add global variable to control whether we should dry run git commands, useful for development.
-# In my localhost I also have `scripts/git` defined as `echo 'hello world'`. But editing inflation,
+# In my localhost I also have `git` defined as `echo 'hello world'`. But editing inflation,
 # population and the glossary won't work if we don't have a real `git` command.
 IS_GIT_DRY_RUN = False
 
@@ -132,7 +134,18 @@ def admin_execution(request):
 def admin_execution_retrieve(request):
     month = _get_month(request.GET)
     year = _get_year(request.GET)
+    is_scrap = _get_is_scrap(request.GET)
     body, status = _retrieve_execution(month, year)
+    return _json_response(body, status)
+
+@never_cache
+def admin_execution_retrieve_manual(request):
+    month = _get_month(request.GET)
+    year = _get_year(request.GET)
+    is_scrap = _get_is_scrap(request.GET)
+    files_json = json.loads(request.body)
+    files_json = {k:v for k, v in files_json.items() if v} # clean empty values
+    body, status = _retrieve_execution_manual(month, year, files_json)
     return _json_response(body, status)
 
 @never_cache
@@ -367,6 +380,9 @@ def _retrieve_execution(month, year):
     data_url = _get_execution_url(year)
     return _scrape_execution(data_url, month, year)
 
+def _retrieve_execution_manual(month, year, files_json):
+    data_url = None
+    return _scrape_execution(data_url, month, year, files_json)
 
 def _review_execution():
     # Pick up the most recent downloaded files
@@ -633,24 +649,43 @@ def _scrape_general(url, year):
 
     return (body, status)
 
-
-def _scrape_execution(url, month, year):
+def _scrape_execution(url, month, year, files_json={}):
     month = str(month)
     year = str(year)
-
-    if not url:
+    if not files_json and not url:
         body = {"result": "error", "message": "<p>Nada que descargar.</p>"}
         status = 400
         return (body, status)
 
     try:
         # Read the given page
-        page = _fetch(url)
+        if not files_json:
+            # Scrapping retrieval
+            page = _fetch(url)
 
-        # Build the list of linked files
-        is_historical = (url == EXECUTION_URL['historical'])
-        files = _get_files_historical(page, year) if is_historical else _get_files(page)
-
+            # Build the list of linked files
+            is_historical = (url == EXECUTION_URL['historical'])
+            files = _get_files_historical(page, year) if is_historical else _get_files(page)
+        else:
+            # Manual retrieval
+            error = False
+            msg = ""
+            files = []
+            for file_name in ("ingresos", "gastos", "inversiones", "ingresosEliminacionesBruto", "gastosEliminacionesBruto"):
+                value_file = files_json.get(file_name)
+                if not value_file:
+                    error = True
+                    msg += f"<p>Falta el fichero: {file_name}</p>"
+                else:
+                    result = urllib.parse.urlparse(value_file)
+                    if not all([result.scheme, result.netloc, result.path]):
+                        error = True
+                        msg += f"<p>Ruta del fichero: {file_name} no válida</p>"
+                    files.append(value_file)
+            if error:
+                body = {"result": "error", "message": msg}
+                status = 400
+                return (body, status)
         # Create the target folder
         temp_folder_path = _create_temp_folder()
 
@@ -1030,7 +1065,7 @@ def _execute_loading_task(cue, *management_commands):
     cmd = (
         "export PYTHONIOENCODING=utf-8 "
         "&& cd %s "
-        "&& source %s/bin/activate "
+        "&& . %s/bin/activate "
     )% (ROOT_PATH, PYTHON_VENV)
 
     for management_command in management_commands:
@@ -1213,40 +1248,56 @@ def _arrange_payments(data_files_path):
 
 # Network helpers
 def _fetch(url):
+    response = None
     try:
         request = Request(url, headers={'User-Agent': 'Mozilla'})
         response = urlopen(request)
-
         # Convert to string based on Python version
         if six.PY2:
             page = response.read()
         else:
             page = response.read().decode('utf-8', errors='replace')
+            print("retrieved HTTP page 2025 ...")
+            print(page[:500])
+            print(f"'page' is {str(type(page))}")
 
     except IOError as error:
         raise AdminException("Page at '%s' couldn't be fetched: %s" % (url, cgi.escape(str(error))))
-
+    finally:
+        if response is not None:
+            response.close()
     return page
 
 
 def _download(url, temp_folder_path, filename):
     try:
-        response = urlopen(Request(url, headers={'User-Agent': 'Mozilla'}))
+        response_rb = None
+        response    = urlopen(Request(url, headers={'User-Agent': 'Mozilla'}))
 
         # In the old Python 2 code we used the same method to create a temporary file
         # with some minor content (text) and to save a downloaded file. Not anymore.
         if six.PY2:
             _write_temp(temp_folder_path, filename, response.read(), 'iso-8859-1')
         else:
-            with open(os.path.join(temp_folder_path, filename), "wb") as f:
-                f.write(response.read())
-
+            # Con python3.6 no se puede usar la libreria chardet. Hay que detectar los 
+            # encodings a mano
+            response_rb  = response.read()
+            _            = response_rb.decode('utf-8') # Si es iso-8859-1 UnicodeError
+            enc          = 'utf-8'
+            if response_rb[:3] == b'\xef\xbb\xbf':  # Caso de utf-8 con BOM
+                response_rb = response_rb[3:]
+    except UnicodeDecodeError: # Encoding no es utf-8, probable iso-8859-1
+        enc          = 'iso-8859-1'
     except IOError as error:
         raise AdminException(
             "File at '%s' couldn't be downloaded: %s" % (url, str(error))
         )
-
-
+    finally:
+        if response_rb is not None:
+            with open(os.path.join(temp_folder_path, filename), "wb") as f:
+                f.write(response_rb)
+            response.close()
+            
 # Filesystem helpers
 def _create_temp_folder():
     base_path = TEMP_BASE_PATH
@@ -1287,7 +1338,7 @@ def _write_temp(temp_folder_path, filename, content, encoding='utf-8'):
 
 
 def _touch(file_path):
-    # The scripts/touch executable must be manually deployed and setuid'ed
+    # The touch executable must be manually deployed and setuid'ed
     cmd = "cd %s && scripts/touch %s" % (THEME_PATH, file_path)
 
     output, error = _execute_cmd(cmd)
@@ -1374,24 +1425,25 @@ def _read(file_path):
 
 def _commit(path, commit_message):
     # Do nothing if dry run is enabled
-    if True:
-        return "Skipping git commit..."
+    # En principio, el primer paso ya actualiza el HEAD y las referencias del repo.
+    # El flujo de cambios se produce desde el repo a la aplicación.
+    return "Skipping git commit..."
     # if IS_GIT_DRY_RUN:
     #     return "Dry run enabled: skipping git commit..."
 
     # Why `diff-index`? See https://stackoverflow.com/a/8123841
-    cmd = (
-        "cd %s"
-        "&& scripts/git add -A %s "
-        "&& scripts/git diff-index --quiet HEAD "
-        "|| scripts/git commit -m \"%s\n\nChange performed on the admin console.\" "
-        "&& scripts/git push"
-    ) % (THEME_PATH, path, commit_message)
+    # cmd = (
+    #     "cd %s"
+    #     "&& scripts/git add -A %s "
+    #     "&& scripts/git diff-index --quiet HEAD "
+    #     "|| scripts/git commit -m \"%s\n\nChange performed on the admin console.\" "
+    #     "&& scripts/git push"
+    # ) % (THEME_PATH, path, commit_message)
 
-    output, error = _execute_cmd(cmd)
+    # output, error = _execute_cmd(cmd)
 
-    if error:
-        raise AdminException("Path %s couldn't be commited: %s\nExecuting: %s\n\n%s" % (path, str(error), cmd, output))
+    # if error:
+    #     raise AdminException("Path %s couldn't be commited: %s\nExecuting: %s\n\n%s" % (path, str(error), cmd, output))
 
 
 # Utility helpers
@@ -1416,6 +1468,8 @@ def _get_content(params):
 def _get_month(params):
     return int(params.get("month", "0"))
 
+def _get_is_scrap(params):
+    return params.get("scrap", "true").lower() == "true"
 
 def _get_year(params):
     current_year = datetime.today().year
@@ -1452,14 +1506,13 @@ def _parse_HTML_file(page):
 def _get_files(page):
     doc = _parse_HTML_file(page)
     links = doc.find_all("a", class_="ico-csv")
-
     return [DATA_BASE_URL + link["href"] for link in links]
 
 def _get_files_historical(page, year):
     doc = _parse_HTML_file(page)
+    # doc is BeautifulSoup(page, "html.parser")
     year_block = doc.find("p", class_="info-title", text=re.compile(year)).parent.findNext("ul")
     links = year_block.find_all("a", class_="ico-csv")
-
     return [DATA_BASE_URL + link["href"] for link in links]
 
 

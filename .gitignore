@@ -4,7 +4,10 @@ node_modules/
 npm-debug.log
 scripts/
 static/stylesheets/main.css.map
+static/csv/
 copy_csv.sh
 consolidate_identical_payments.rb
 generate_csv.sh
 generate_payments_csv.sh
+change_encoding.py
+.vscode
