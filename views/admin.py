@@ -1304,9 +1304,10 @@ def _download(url, temp_folder_path, filename):
         if response_rb is not None:
             enc = chardet.detect(response_rb)
             enc = enc["encoding"]
-            print(f"File {filename} has encoding: {enc}")
+            print(f"Exceptional --> file {filename} has encoding: {enc}")
             response_r  = response_rb.decode(enc)
             response_rb = response_r.encode(enc)
+            print(f"{filename} decoded properly!")
  
     finally:
         if response_rb is not None:
