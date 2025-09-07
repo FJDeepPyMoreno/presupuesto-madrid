@@ -24,6 +24,7 @@ import re
 import six
 import subprocess
 import urllib
+import chardet
 
 # urllib2 has changed significantly in Python 3
 if six.PY2:
@@ -1283,16 +1284,30 @@ def _download(url, temp_folder_path, filename):
             # Con python3.6 no se puede usar la libreria chardet. Hay que detectar los 
             # encodings a mano
             response_rb  = response.read()
+            enc = chardet.detect(response_rb)
+            enc = enc["encoding"]
+            print(f"File {filename} has encoding: {enc}")
             _            = response_rb.decode('utf-8') # Si es iso-8859-1 UnicodeError
-            enc          = 'utf-8'
             if response_rb[:3] == b'\xef\xbb\xbf':  # Caso de utf-8 con BOM
                 response_rb = response_rb[3:]
     except UnicodeDecodeError: # Encoding no es utf-8, probable iso-8859-1
-        enc          = 'iso-8859-1'
+        if response_rb is not None:
+            response_r  = response_rb.decode('iso-8859-1')
+            response_rb = response_r.encode('iso-8859-1')
+        else:
+            pass
     except IOError as error:
         raise AdminException(
             "File at '%s' couldn't be downloaded: %s" % (url, str(error))
         )
+    except Exception:
+        if response_rb is not None:
+            enc = chardet.detect(response_rb)
+            enc = enc["encoding"]
+            print(f"File {filename} has encoding: {enc}")
+            response_r  = response_rb.decode(enc)
+            response_rb = response_r.encode(enc)
+ 
     finally:
         if response_rb is not None:
             with open(os.path.join(temp_folder_path, filename), "wb") as f:
