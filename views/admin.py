@@ -1294,7 +1294,7 @@ def _download(url, temp_folder_path, filename):
         )
     finally:
         if response_rb is not None:
-            with open(os.path.join(temp_folder_path, filename), "wb", encoding=enc) as f:
+            with open(os.path.join(temp_folder_path, filename), "wb") as f:
                 f.write(response_rb)
             response.close()
             
