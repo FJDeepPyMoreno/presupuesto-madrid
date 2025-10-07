@@ -101,7 +101,17 @@ def admin_general(request):
 @never_cache
 def admin_general_retrieve(request):
     year = _get_year(request.GET)
+    is_scrap = _get_is_scrap(request.GET)
     body, status = _retrieve_general(year)
+    return _json_response(body, status)
+
+@never_cache
+def admin_general_retrieve_manual(request):
+    year = _get_year(request.GET)
+    is_scrap = _get_is_scrap(request.GET)
+    files_json = json.loads(request.body)
+    files_json = {k:v for k, v in files_json.items() if v} # clean empty values
+    body, status = _retrieve_general_manual(year, files_json)
     return _json_response(body, status)
 
 @never_cache
@@ -228,6 +238,16 @@ def admin_monitoring_retrieve(request):
     return _json_response(body, status)
 
 @never_cache
+def admin_monitoring_retrieve_manual(request):
+    year = _get_year(request.GET)
+    is_scrap = _get_is_scrap(request.GET)
+    is_year_completed = request.GET.get("yearCompleted", "No")==u'Sí'
+    files_json = json.loads(request.body)
+    files_json = {k:v for k, v in files_json.items() if v} # clean empty values
+    body, status = _retrieve_monitoring_manual(year, is_year_completed, files_json)
+    return _json_response(body, status)
+
+@never_cache
 def admin_monitoring_load(request):
     body, status = _load_monitoring()
     return _json_response(body, status)
@@ -255,6 +275,15 @@ def admin_main_investments_retrieve(request):
     return _json_response(body, status)
 
 @never_cache
+def admin_main_investments_retrieve_manual(request):
+    year = _get_year(request.GET)
+    is_scrap = _get_is_scrap(request.GET)
+    files_json = json.loads(request.body)
+    files_json = {k:v for k, v in files_json.items() if v} # clean empty values
+    body, status = _retrieve_main_investments_manual(year, files_json)
+    return _json_response(body, status)
+
+@never_cache
 def admin_main_investments_load(request):
     body, status = _load_main_investments()
     return _json_response(body, status)
@@ -279,6 +308,15 @@ def admin_payments(request):
 def admin_payments_retrieve(request):
     year = _get_year(request.GET)
     body, status = _retrieve_payments(year)
+    return _json_response(body, status)
+
+@never_cache
+def admin_payments_retrieve_manual(request):
+    year = _get_year(request.GET)
+    is_scrap = _get_is_scrap(request.GET)
+    files_json = json.loads(request.body)
+    files_json = {k:v for k, v in files_json.items() if v} # clean empty values
+    body, status = _retrieve_payments_manual(year, files_json)
     return _json_response(body, status)
 
 @never_cache
@@ -344,6 +382,10 @@ def admin_glossary_en_load(request):
 def _retrieve_general(year):
     data_url = _get_general_url(year)
     return _scrape_general(data_url, year)
+
+def _retrieve_general_manual(year, files_json):
+    data_url = None
+    return _scrape_general(data_url, year, files_json)
 
 
 def _review_general():
@@ -423,6 +465,10 @@ def _retrieve_monitoring(year, is_year_completed):
     data_url = _get_monitoring_url(year)
     return _scrape_monitoring(data_url, year, is_year_completed)
 
+def _retrieve_monitoring_manual(year, is_year_completed, files_json):
+    data_url = None
+    return _scrape_monitoring(data_url, year, is_year_completed, files_json)
+
 
 def _load_monitoring():
     # Pick up the most recent downloaded files
@@ -452,6 +498,10 @@ def _retrieve_main_investments(year):
     data_url = _get_main_investments_url(year)
     return _scrape_main_investments(data_url, year)
 
+def _retrieve_main_investments_manual(year, files_json):
+    data_url = None
+    return _scrape_main_investments(data_url, year, files_json)
+
 
 def _load_main_investments():
     # Pick up the most recent downloaded files
@@ -480,6 +530,10 @@ def _load_main_investments():
 def _retrieve_payments(year):
     data_url = _get_payments_url(year)
     return _scrape_payments(data_url, year)
+
+def _retrieve_payments_manual(year, files_json):
+    data_url = None
+    return _scrape_payments(data_url, year, files_json)
 
 
 def _review_payments():
@@ -599,21 +653,42 @@ def _load_glossary_en():
 
 
 # Action helpers
-def _scrape_general(url, year):
+def _scrape_general(url, year, files_json={}):
     year = str(year)
 
-    if not url:
+    if not files_json and not url:
         body = {"result": "error", "message": "<p>Nada que descargar.</p>"}
         status = 400
         return (body, status)
 
     try:
-        # Read the given page
-        page = _fetch(url)
+        if not files_json:
+            # Read the given page
+            page = _fetch(url)
 
-        # Build the list of linked files
-        is_historical = (url == GENERAL_URL['historical'])
-        files = _get_files_historical(page, year) if is_historical else _get_files(page)
+            # Build the list of linked files
+            is_historical = (url == GENERAL_URL['historical'])
+            files = _get_files_historical(page, year) if is_historical else _get_files(page)
+        else:
+            # Manual retrieval
+            error = False
+            msg = ""
+            files = []
+            for file_name in ("ingresos", "gastos", "inversiones"):
+                value_file = files_json.get(file_name)
+                if not value_file:
+                    error = True
+                    msg += f"<p>Falta el fichero: {file_name}</p>"
+                else:
+                    result = urllib.parse.urlparse(value_file)
+                    if not all([result.scheme, result.netloc, result.path]):
+                        error = True
+                        msg += f"<p>Ruta del fichero: {file_name} no válida</p>"
+                    files.append(value_file)
+            if error:
+                body = {"result": "error", "message": msg}
+                status = 400
+                return (body, status)
 
         # Create the target folder
         temp_folder_path = _create_temp_folder()
@@ -630,13 +705,19 @@ def _scrape_general(url, year):
         status = "0M"  # 0M means the year has no execution data
 
         _write_temp(temp_folder_path, ".budget_status", status)
-
-        message = (
-            "<p>Los datos se han descargado correctamente.</p>"
-            "<p>Puedes ver la página desde la que hemos hecho la descarga <a href='%s' target='_blank'>aquí</a>, "
-            "y para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
-            % (url, temp_folder_path)
-        )
+        if url:
+            message = (
+                "<p>Los datos se han descargado correctamente.</p>"
+                "<p>Puedes ver la página desde la que hemos hecho la descarga <a href='%s' target='_blank'>aquí</a>, "
+                "y para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
+                % (url, temp_folder_path)
+            )
+        else:
+            message = (
+                "<p>Los datos se han descargado correctamente.</p>"
+                "<p>Para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
+                % (temp_folder_path)
+            )
         body = {"result": "success", "message": message}
         status = 200
     except AdminException as error:
@@ -686,6 +767,7 @@ def _scrape_execution(url, month, year, files_json={}):
                 body = {"result": "error", "message": msg}
                 status = 400
                 return (body, status)
+        
         # Create the target folder
         temp_folder_path = _create_temp_folder()
 
@@ -719,13 +801,20 @@ def _scrape_execution(url, month, year, files_json={}):
         )  # 12M means the year is fully executed
 
         _write_temp(temp_folder_path, ".budget_status", status)
-
-        message = (
-            "<p>Los datos se han descargado correctamente.</p>"
-            "<p>Puedes ver la página desde la que hemos hecho la descarga <a href='%s' target='_blank'>aquí</a>, "
-            "y para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
-            % (url, temp_folder_path)
-        )
+        
+        if url:
+            message = (
+                "<p>Los datos se han descargado correctamente.</p>"
+                "<p>Puedes ver la página desde la que hemos hecho la descarga <a href='%s' target='_blank'>aquí</a>, "
+                "y para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
+                % (url, temp_folder_path)
+            )
+        else:
+            message = (
+                "<p>Los datos se han descargado correctamente.</p>"
+                "<p>Para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
+                % (temp_folder_path)
+            )
         body = {"result": "success", "message": message}
         status = 200
     except AdminException as error:
@@ -739,20 +828,42 @@ def _scrape_execution(url, month, year, files_json={}):
     return (body, status)
 
 
-def _scrape_monitoring(url, year, is_year_completed):
+def _scrape_monitoring(url, year, is_year_completed, files_json={}):
     year = str(year)
 
-    if not url:
+    if not files_json and not url:
         body = {"result": "error", "message": "<p>Nada que descargar.</p>"}
         status = 400
         return (body, status)
 
     try:
         # Read the given page
-        page = _fetch(url)
+        if not files_json:
+            # Scrapping retrieval
+            page = _fetch(url)
 
-        # Build the list of linked files
-        files = _get_files_historical(page, year)
+            # Build the list of linked files
+            files = _get_files_historical(page, year)
+        else:
+            # Manual retrieval
+            error = False
+            msg = ""
+            files = []
+            for file_name in ("objetivos_e_indicadores", "objetivos_y_actividades"):
+                value_file = files_json.get(file_name)
+                if not value_file:
+                    error = True
+                    msg += f"<p>Falta el fichero: {file_name}</p>"
+                else:
+                    result = urllib.parse.urlparse(value_file)
+                    if not all([result.scheme, result.netloc, result.path]):
+                        error = True
+                        msg += f"<p>Ruta del fichero: {file_name} no válida</p>"
+                    files.append(value_file)
+            if error:
+                body = {"result": "error", "message": msg}
+                status = 400
+                return (body, status)            
 
         # Create the target folder
         temp_folder_path = _create_temp_folder()
@@ -783,13 +894,20 @@ def _scrape_monitoring(url, year, is_year_completed):
                 [4, 5, 6, 8, 10, 11, 12])
 
         _write_temp(temp_folder_path, ".budget_year", year)
-
-        message = (
-            "<p>Los datos se han descargado correctamente.</p>"
-            "<p>Puedes ver la página desde la que hemos hecho la descarga <a href='%s' target='_blank'>aquí</a>, "
-            "y para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
-            % (url, temp_folder_path)
-        )
+        
+        if url:
+            message = (
+                "<p>Los datos se han descargado correctamente.</p>"
+                "<p>Puedes ver la página desde la que hemos hecho la descarga <a href='%s' target='_blank'>aquí</a>, "
+                "y para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
+                % (url, temp_folder_path)
+            )
+        else:
+            message = (
+                "<p>Los datos se han descargado correctamente.</p>"
+                "<p>Para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
+                % (temp_folder_path)
+            )
         body = {"result": "success", "message": message}
         status = 200
     except AdminException as error:
@@ -803,20 +921,41 @@ def _scrape_monitoring(url, year, is_year_completed):
     return (body, status)
 
 
-def _scrape_main_investments(url, year):
+def _scrape_main_investments(url, year, files_json={}):
     year = str(year)
 
-    if not url:
+    if not files_json and not url:
         body = {"result": "error", "message": "<p>Nada que descargar.</p>"}
         status = 400
         return (body, status)
 
     try:
-        # Read the given page
-        page = _fetch(url)
+        if not files_json:
+            # Read the given page
+            page = _fetch(url)
 
-        # Build the list of linked files
-        files = _get_files_historical(page, year)
+            # Build the list of linked files
+            files = _get_files_historical(page, year)
+        else:
+            # Manual retrieval
+            error = False
+            msg = ""
+            files = []
+            for file_name in ("inversiones_principales",):
+                value_file = files_json.get(file_name)
+                if not value_file:
+                    error = True
+                    msg += f"<p>Falta el fichero: {file_name}</p>"
+                else:
+                    result = urllib.parse.urlparse(value_file)
+                    if not all([result.scheme, result.netloc, result.path]):
+                        error = True
+                        msg += f"<p>Ruta del fichero: {file_name} no válida</p>"
+                    files.append(value_file)
+            if error:
+                body = {"result": "error", "message": msg}
+                status = 400
+                return (body, status)
 
         # Create the target folder
         temp_folder_path = _create_temp_folder()
@@ -825,13 +964,19 @@ def _scrape_main_investments(url, year):
         _download(files[0], temp_folder_path, "inversiones_principales.csv")
 
         _write_temp(temp_folder_path, ".budget_year", year)
-
-        message = (
-            "<p>Los datos se han descargado correctamente.</p>"
-            "<p>Puedes ver la página desde la que hemos hecho la descarga <a href='%s' target='_blank'>aquí</a>, "
-            "y para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
-            % (url, temp_folder_path)
-        )
+        if url:
+            message = (
+                "<p>Los datos se han descargado correctamente.</p>"
+                "<p>Puedes ver la página desde la que hemos hecho la descarga <a href='%s' target='_blank'>aquí</a>, "
+                "y para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
+                % (url, temp_folder_path)
+            )
+        else:
+            message = (
+                "<p>Los datos se han descargado correctamente.</p>"
+                "<p>Para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
+                % (temp_folder_path)
+            )
         body = {"result": "success", "message": message}
         status = 200
     except AdminException as error:
@@ -845,20 +990,41 @@ def _scrape_main_investments(url, year):
     return (body, status)
 
 
-def _scrape_payments(url, year):
+def _scrape_payments(url, year, files_json={}):
     year = str(year)
 
-    if not url:
+    if not files_json and not url:
         body = {"result": "error", "message": "<p>Nada que descargar.</p>"}
         status = 400
         return (body, status)
 
     try:
-        # Read the given page
-        page = _fetch(url)
+        if not files_json:
+            # Read the given page
+            page = _fetch(url)
 
-        # Build the list of linked files
-        files = _get_files(page)
+            # Build the list of linked files
+            files = _get_files(page)
+        else:
+            # Manual retrieval
+            error = False
+            msg = ""
+            files = []
+            for file_name in ("areas_y_distritos", "organismos"):
+                value_file = files_json.get(file_name)
+                if not value_file:
+                    error = True
+                    msg += f"<p>Falta el fichero: {file_name}</p>"
+                else:
+                    result = urllib.parse.urlparse(value_file)
+                    if not all([result.scheme, result.netloc, result.path]):
+                        error = True
+                        msg += f"<p>Ruta del fichero: {file_name} no válida</p>"
+                    files.append(value_file)
+            if error:
+                body = {"result": "error", "message": msg}
+                status = 400
+                return (body, status)
 
         # Create the target folder
         temp_folder_path = _create_temp_folder()
@@ -869,12 +1035,19 @@ def _scrape_payments(url, year):
 
         _write_temp(temp_folder_path, ".budget_year", year)
 
-        message = (
-            "<p>Los datos se han descargado correctamente.</p>"
-            "<p>Puedes ver la página desde la que hemos hecho la descarga <a href='%s' target='_blank'>aquí</a>, "
-            "y para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
-            % (url, temp_folder_path)
-        )
+        if url:
+            message = (
+                "<p>Los datos se han descargado correctamente.</p>"
+                "<p>Puedes ver la página desde la que hemos hecho la descarga <a href='%s' target='_blank'>aquí</a>, "
+                "y para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
+                % (url, temp_folder_path)
+            )
+        else:
+            message = (
+                "<p>Los datos se han descargado correctamente.</p>"
+                "<p>Para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
+                % (temp_folder_path)
+            )
         body = {"result": "success", "message": message}
         status = 200
     except AdminException as error:

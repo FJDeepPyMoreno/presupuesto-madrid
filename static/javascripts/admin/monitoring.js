@@ -1,5 +1,5 @@
 $(document).ready(function () {
-  $('#data-download').submit(function(e) {
+  $('#data-download-scrap').submit(function(e) {
     e.preventDefault();
 
     disableButtons();
@@ -14,6 +14,29 @@ $(document).ready(function () {
         year:  $('#year').val(),
         yearCompleted:  $('#year-completed').val()
       },
+      contentType: 'application/json; charset=utf-8',
+      success: onDownloadSuccess,
+      error: onDownloadError,
+      complete: enableButtons
+    });
+  });
+
+  $('#data-download-manual').submit(function(e) {
+    e.preventDefault();
+
+    disableButtons();
+    clearResult('download');
+    clearResult('review');
+    clearResult('load');
+    showSpinner('download');
+
+    $.ajax({
+      type: 'POST',
+      url: `monitoring/retrieve_manual?year=${$('#year').val()}&year-completed=${$('#year-completed').val()}&scrap=false`,
+      data: JSON.stringify({
+        objetivos_e_indicadores: $('#input-objetivos_e_indicadores').val(),
+        objetivos_y_actividades: $('#input-objetivos_y_actividades').val()
+      }),
       contentType: 'application/json; charset=utf-8',
       success: onDownloadSuccess,
       error: onDownloadError,
