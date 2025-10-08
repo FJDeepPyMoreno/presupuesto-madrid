@@ -116,45 +116,6 @@
           </div>
         </div>
         
-        <script>
-          // Get references to the tab links
-          const scrapTabLink = document.querySelector('[role="scrap"] a');
-          const manualTabLink = document.querySelector('[role="manual"] a');
-        
-          // Get references to the form containers
-          const scrapForm = document.getElementById('scrap-form');
-          const manualForm = document.getElementById('manual-form');
-        
-          // Add click event listeners to the tab links
-          scrapTabLink.addEventListener('click', (event) => {
-            event.preventDefault(); // Prevent the default anchor link behavior
-            // Update the active class for styling
-            document.querySelector('[role="scrap"]').classList.add('active');
-            document.querySelector('[role="manual"]').classList.remove('active');
-        
-            // Show the scrap form and hide the manual form
-            scrapForm.style.display = 'block';
-            manualForm.style.display = 'none';
-          });
-        
-          manualTabLink.addEventListener('click', (event) => {
-            event.preventDefault(); // Prevent the default anchor link behavior
-            // Update the active class for styling
-            document.querySelector('[role="manual"]').classList.add('active');
-            document.querySelector('[role="scrap"]').classList.remove('active');
-        
-            // Show the manual form and hide the scrap form
-            manualForm.style.display = 'block';
-            scrapForm.style.display = 'none';
-          });
-        
-          // Initial state: ensure scrap form is visible and manual is hidden on page load
-          document.addEventListener('DOMContentLoaded', (event) => {
-            scrapForm.style.display = 'block';
-            manualForm.style.display = 'none';
-          });
-        </script>
-        
         <div class="panel">
           <div class="panel-content">
             <h3>2. Revisar datos</h3>
