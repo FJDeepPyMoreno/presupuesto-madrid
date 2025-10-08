@@ -15,7 +15,10 @@
         <div class="panel">
           <div class="panel-content">
             <h3>1. Descargar datos</h3>
-            <p>El primer paso es descargar los ficheros de datos del portal de Datos Abiertos de Madrid. Para ello, especifica el año de los datos que quieres descargar (por defecto estamos utilizando el ejercicio anterior al ejercicio en curso). Al pulsar el botón 'Descargar', los datos se bajarán del Portal y se guardarán en el servidor, listos para el siguiente paso.</p>
+            <p>El primer paso es descargar los ficheros de datos del portal de Datos Abiertos de Madrid. Para ello,
+              especifica el año de los datos que quieres descargar (por defecto estamos utilizando el ejercicio anterior
+              al ejercicio en curso). Al pulsar el botón 'Descargar', los datos se bajarán del Portal y se guardarán en
+              el servidor, listos para el siguiente paso.</p>
 
             <form id="data-download">
               <div class="form-group">
@@ -34,8 +37,45 @@
                   <option value="No" selected>No</option>
                 </select>
               </div>
-              <button type="submit" class="btn btn-default btn-primary" >{{ _('Descargar') }}</button>
             </form>
+
+            <ul id="tabs" class="nav nav-tabs nav-tabs-centered" role="tablist">
+              <li role="scrap" class="active">
+                <a href="#scrap" role="tab">{{ _('Automático') }}</a>
+              </li>
+              <li role="manual">
+                <a href="#manual" role="tab">{{ _('Manual') }}</a>
+              </li>
+            </ul>
+
+            <div id="scrap-form">
+              <form id="data-download-scrap">
+                <button type="submit" class="btn btn-default btn-primary" id="scrap-download-button">
+                  {{ _('Descargar') }}
+                </button>
+              </form>
+            </div>
+
+            <div id="manual-form" style="display: none;" class="form-column-container">
+              <form id="data-download-manual">
+                <div class="form-group-manual">
+                  <label for="input-objetivos_e_indicadores">Objetivos e Indicadores</label>
+                  <input type="text" class="form-control" id="input-objetivos_e_indicadores" name="objetivos_e_indicadores" />
+                </div>
+                <div class="form-group-manual">
+                  <label for="input-objetivos_y_actividades">Objetivo y Actividades</label>
+                  <input type="text" class="form-control" id="input-objetivos_y_actividades" name="objetivos_y_actividades" />
+                </div>
+                <button
+                  type="submit"
+                  class="btn btn-default btn-primary"
+                  id="manual-download-button"
+                >
+                  {{ _('Descargar') }}
+                </button>
+              </form>
+            </div>
+
             <div id="data-download-output" class="data-output">
               <div class="loading"><img src="{{ static('assets/loader.png') }}"> Descargando datos</div>
               <div class="output"></div>
@@ -46,9 +86,10 @@
         <div class="panel">
           <div class="panel-content">
             <h3>2. Cargar datos</h3>
-            <p>Finalmente, podemos cargar los datos descargados en la base de datos, haciéndolos visibles al exterior, tanto en español como en inglés.</p>
+            <p>Finalmente, podemos cargar los datos descargados en la base de datos, haciéndolos visibles al exterior,
+              tanto en español como en inglés.</p>
             <form class="form-inline" id="data-load">
-              <button type="submit" class="btn btn-default btn-primary" >{{ _('Cargar') }}</button>
+              <button type="submit" class="btn btn-default btn-primary">{{ _('Cargar') }}</button>
             </form>
             <div id="data-load-output" class="data-output">
               <div class="loading"><img src="{{ static('assets/loader.png') }}"> Cargando datos</div>

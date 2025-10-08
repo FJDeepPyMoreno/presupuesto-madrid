@@ -15,6 +15,7 @@ EXTRA_URLS = (
 
     url(r'^admin/general$', theme_views.admin_general, name='admin_general'),
     url(r'^admin/general/retrieve$', theme_views.admin_general_retrieve),
+    url(r'^admin/general/retrieve_manual$', theme_views.admin_general_retrieve_manual),
     url(r'^admin/general/review$', theme_views.admin_general_review),
     url(r'^admin/general/load$', theme_views.admin_general_load),
 
@@ -26,10 +27,12 @@ EXTRA_URLS = (
 
     url(r'^admin/monitoring$', theme_views.admin_monitoring, name='admin_monitoring'),
     url(r'^admin/monitoring/retrieve$', theme_views.admin_monitoring_retrieve),
+    url(r'^admin/monitoring/retrieve_manual$', theme_views.admin_monitoring_retrieve_manual),
     url(r'^admin/monitoring/load$', theme_views.admin_monitoring_load),
 
     url(r'^admin/main-investments$', theme_views.admin_main_investments, name='admin_main_investments'),
     url(r'^admin/main-investments/retrieve$', theme_views.admin_main_investments_retrieve),
+    url(r'^admin/main-investments/retrieve_manual$', theme_views.admin_main_investments_retrieve_manual),
     url(r'^admin/main-investments/load$', theme_views.admin_main_investments_load),
 
     url(r'^admin/inflation$', theme_views.admin_inflation, name='admin_inflation'),
@@ -44,6 +47,7 @@ EXTRA_URLS = (
 
     url(r'^admin/payments$', theme_views.admin_payments, name='admin_payments'),
     url(r'^admin/payments/retrieve$', theme_views.admin_payments_retrieve),
+    url(r'^admin/payments/retrieve_manual$', theme_views.admin_payments_retrieve_manual),
     url(r'^admin/payments/review$', theme_views.admin_payments_review),
     url(r'^admin/payments/load$', theme_views.admin_payments_load),
 

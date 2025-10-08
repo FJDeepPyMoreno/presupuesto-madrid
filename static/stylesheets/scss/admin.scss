@@ -11,6 +11,10 @@
   }
 }
 
+.nav-tabs {
+  margin-bottom: 2rem;
+}
+
 // Handsontable
 #handsontable-container {
   display: table;
@@ -18,8 +22,10 @@
 }
 
 .form-group-manual {
-  display: flex;
-  align-items: center; /* This vertically aligns the label and input */
+  display: grid;
+  grid-template-columns: 0.3fr 1fr;
+  padding-bottom: 0.5rem;
+  // align-items: center; /* This vertically aligns the label and input */
   gap: 1rem; /* Adds space between the label and input */
 
   label {

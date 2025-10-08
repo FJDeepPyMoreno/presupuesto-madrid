@@ -27,7 +27,45 @@
                   <option value="{{current_year}}" selected>{{current_year}}</option>
                 </select>
               </div>
-              <button type="submit" class="btn btn-default btn-primary" >{{ _('Descargar') }}</button>
+            </form>
+
+              <ul id="tabs" class="nav nav-tabs nav-tabs-centered" role="tablist">
+                <li role="scrap" class="active">
+                  <a href="#scrap" role="tab">{{ _('Automático') }}</a>
+                </li>
+                <li role="manual">
+                  <a href="#manual" role="tab">{{ _('Manual') }}</a>
+                </li>
+              </ul>
+  
+              <div id="scrap-form">
+                <form id="data-download-scrap">
+                  <button
+                    type="submit"
+                    class="btn btn-default btn-primary"
+                    id="scrap-download-button"
+                    >
+                      {{ _('Descargar') }}
+                  </button>
+                </form>
+              </div>
+  
+              <div id="manual-form" style="display: none;" class="form-column-container">
+                <form id="data-download-manual">
+                  <div class="form-group-manual">
+                    <label for="input-inversiones_principales">inversiones Principales</label>
+                    <input type="text" class="form-control" id="input-inversiones_principales" name="inversiones_principales" />
+                  </div>
+                  <button
+                    type="submit"
+                    class="btn btn-default btn-primary"
+                    id="manual-download-button"
+                  >
+                    {{ _('Descargar') }}
+                  </button>
+                </form>
+              </div>
+
             </form>
             <div id="data-download-output" class="data-output">
               <div class="loading"><img src="{{ static('assets/loader.png') }}"> Descargando datos</div>
