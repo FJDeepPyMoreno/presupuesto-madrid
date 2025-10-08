@@ -24,6 +24,7 @@
 .form-group-manual {
   display: grid;
   grid-template-columns: 0.3fr 1fr;
+  padding-bottom: 0.5rem;
   // align-items: center; /* This vertically aligns the label and input */
   gap: 1rem; /* Adds space between the label and input */
 
