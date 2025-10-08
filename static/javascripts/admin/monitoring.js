@@ -32,7 +32,7 @@ $(document).ready(function () {
 
     $.ajax({
       type: 'POST',
-      url: `monitoring/retrieve_manual?year=${$('#year').val()}&year-completed=${$('#year-completed').val()}&scrap=false`,
+      url: `monitoring/retrieve_manual?year=${$('#year').val()}&yearCompleted=${$('#year-completed').val()}&scrap=false`,
       data: JSON.stringify({
         objetivos_e_indicadores: $('#input-objetivos_e_indicadores').val(),
         objetivos_y_actividades: $('#input-objetivos_y_actividades').val()
