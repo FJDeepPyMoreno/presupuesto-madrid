@@ -696,7 +696,7 @@ def _scrape_general(url, year, files_json={}):
         # We assume a constant page layout: ingresos, gastos, inversiones
         _download(files[0], temp_folder_path, "ingresos.csv")
         _download(files[1], temp_folder_path, "gastos.csv")
-        _download(files[2], temp_folder_path, "inversiones.csv")
+        _download(files[2], temp_folder_path, "inversiones.csv")        
 
         _write_temp(temp_folder_path, ".budget_year", year)
         _write_temp(temp_folder_path, ".budget_type", "general")
@@ -706,11 +706,13 @@ def _scrape_general(url, year, files_json={}):
 
         _write_temp(temp_folder_path, ".budget_status", status)
         if url:
+            files_download = {"ingresos.csv": files[0], "gastos.csv": files[1], "inversiones.csv": files[2]}
             message = (
                 "<p>Los datos se han descargado correctamente.</p>"
                 "<p>Puedes ver la página desde la que hemos hecho la descarga <a href='%s' target='_blank'>aquí</a>, "
                 "y para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
-                % (url, temp_folder_path)
+                "<p>Los ficheros descargados se pueden descargar desde aqui: %s</p>"
+                % (url, temp_folder_path, ", ".join(["<a href='%s' target='_blank'>%s</a>" % (fileurl, filename) for filename, fileurl in files_download.items()]))
             )
         else:
             message = (
@@ -803,11 +805,13 @@ def _scrape_execution(url, month, year, files_json={}):
         _write_temp(temp_folder_path, ".budget_status", status)
         
         if url:
+            files_download = {"ingresos.csv": files[0], "gastos.csv": files[1], "inversiones.csv": files[2], "ingresos_eliminaciones_bruto.csv": files[3], "gastos_eliminaciones_bruto.csv": files[4]}
             message = (
                 "<p>Los datos se han descargado correctamente.</p>"
                 "<p>Puedes ver la página desde la que hemos hecho la descarga <a href='%s' target='_blank'>aquí</a>, "
                 "y para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
-                % (url, temp_folder_path)
+                "<p>Los ficheros descargados se pueden descargar desde aqui: %s</p>"
+                % (url, temp_folder_path, ", ".join(["<a href='%s' target='_blank'>%s</a>" % (fileurl, filename) for filename, fileurl in files_download.items()]))
             )
         else:
             message = (
@@ -896,11 +900,13 @@ def _scrape_monitoring(url, year, is_year_completed, files_json={}):
         _write_temp(temp_folder_path, ".budget_year", year)
         
         if url:
+            files_download = {"objetivos_e_indicadores.csv": files[0], "objetivos_y_actividades.csv": files[1]}
             message = (
                 "<p>Los datos se han descargado correctamente.</p>"
                 "<p>Puedes ver la página desde la que hemos hecho la descarga <a href='%s' target='_blank'>aquí</a>, "
                 "y para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
-                % (url, temp_folder_path)
+                "<p>Los ficheros descargados se pueden descargar desde aqui: %s</p>"
+                % (url, temp_folder_path, ", ".join(["<a href='%s' target='_blank'>%s</a>" % (fileurl, filename) for filename, fileurl in files_download.items()]))
             )
         else:
             message = (
@@ -965,11 +971,13 @@ def _scrape_main_investments(url, year, files_json={}):
 
         _write_temp(temp_folder_path, ".budget_year", year)
         if url:
+            files_download = {"inversiones_principales.csv": files[0]}
             message = (
                 "<p>Los datos se han descargado correctamente.</p>"
                 "<p>Puedes ver la página desde la que hemos hecho la descarga <a href='%s' target='_blank'>aquí</a>, "
                 "y para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
-                % (url, temp_folder_path)
+                "<p>Los ficheros descargados se pueden descargar desde aqui: %s</p>"
+                % (url, temp_folder_path, ", ".join(["<a href='%s' target='_blank'>%s</a>" % (fileurl, filename) for filename, fileurl in files_download.items()]))
             )
         else:
             message = (
@@ -1036,11 +1044,13 @@ def _scrape_payments(url, year, files_json={}):
         _write_temp(temp_folder_path, ".budget_year", year)
 
         if url:
+            files_download = {"areas_y_distritos.csv": files[0], "organismos.csv": files[1]}
             message = (
                 "<p>Los datos se han descargado correctamente.</p>"
                 "<p>Puedes ver la página desde la que hemos hecho la descarga <a href='%s' target='_blank'>aquí</a>, "
                 "y para tu referencia los ficheros han sido almacenados en <b>%s</b>.</p>"
-                % (url, temp_folder_path)
+                "<p>Los ficheros descargados se pueden descargar desde aqui: %s</p>"
+                % (url, temp_folder_path, ", ".join(["<a href='%s' target='_blank'>%s</a>" % (fileurl, filename) for filename, fileurl in files_download.items()]))
             )
         else:
             message = (
