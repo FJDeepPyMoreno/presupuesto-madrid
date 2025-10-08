@@ -860,7 +860,10 @@ def _scrape_monitoring(url, year, is_year_completed, files_json={}):
                     error = True
                     msg += f"<p>Falta el fichero: {file_name}</p>"
                 else:
-                    result = urllib.parse.urlparse(value_file)
+                    if os.path.isfile(value_file):
+                        pass
+                    else:
+                        result = urllib.parse.urlparse(value_file)
                     if not all([result.scheme, result.netloc, result.path]):
                         error = True
                         msg += f"<p>Ruta del fichero: {file_name} no válida</p>"
@@ -874,8 +877,14 @@ def _scrape_monitoring(url, year, is_year_completed, files_json={}):
         temp_folder_path = _create_temp_folder()
 
         # We assume a constant page layout
-        _download(files[0], temp_folder_path, "objetivos_e_indicadores.csv")
-        _download(files[1], temp_folder_path, "objetivos_y_actividades.csv")
+        if os.path.isfile(files[0]):
+            os.rename(files[0], os.path.join(temp_folder_path, "objetivos_e_indicadores.csv"))
+        else:
+            _download(files[0], temp_folder_path, "objetivos_e_indicadores.csv")
+        if os.path.isfile(files[1]):
+            os.rename(files[1], os.path.join(temp_folder_path, "objetivos_y_actividades.csv"))
+        else:
+            _download(files[1], temp_folder_path, "objetivos_y_actividades.csv")
 
         # Based on the two denormalized source files, create three nicer normalized final ones
         _csv_cut_columns(temp_folder_path,
