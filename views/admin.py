@@ -876,11 +876,19 @@ def _scrape_monitoring(url, year, is_year_completed, files_json={}):
 
         # We assume a constant page layout
         if os.path.isfile(files[0]):
-            os.rename(files[0], os.path.join(temp_folder_path, "objetivos_e_indicadores.csv"))
+            with open(files[0], "rb") as f:
+                response_rb = f.read()
+            with open(os.path.join(temp_folder_path, "objetivos_e_indicadores.csv"), "wb") as f:
+                f.write(response_rb)
+            # os.rename(files[0], os.path.join(temp_folder_path, "objetivos_e_indicadores.csv"))
         else:
             _download(files[0], temp_folder_path, "objetivos_e_indicadores.csv")
         if os.path.isfile(files[1]):
-            os.rename(files[1], os.path.join(temp_folder_path, "objetivos_y_actividades.csv"))
+            with open(files[1], "rb") as f:
+                response_rb = f.read()
+            with open(os.path.join(temp_folder_path, "objetivos_y_actividades.csv"), "wb") as f:
+                f.write(response_rb)
+            # os.rename(files[1], os.path.join(temp_folder_path, "objetivos_y_actividades.csv"))
         else:
             _download(files[1], temp_folder_path, "objetivos_y_actividades.csv")
 
