@@ -860,13 +860,11 @@ def _scrape_monitoring(url, year, is_year_completed, files_json={}):
                     error = True
                     msg += f"<p>Falta el fichero: {file_name}</p>"
                 else:
-                    if os.path.isfile(value_file):
-                        pass
-                    else:
+                    if not os.path.isfile(value_file):
                         result = urllib.parse.urlparse(value_file)
-                    if not all([result.scheme, result.netloc, result.path]):
-                        error = True
-                        msg += f"<p>Ruta del fichero: {file_name} no válida</p>"
+                        if not all([result.scheme, result.netloc, result.path]):
+                            error = True
+                            msg += f"<p>Ruta del fichero: {file_name} no válida</p>"
                     files.append(value_file)
             if error:
                 body = {"result": "error", "message": msg}
