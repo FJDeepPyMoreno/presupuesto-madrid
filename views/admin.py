@@ -761,7 +761,10 @@ def _scrape_execution(url, month, year, files_json={}):
                     error = True
                     msg += f"<p>Falta el fichero: {file_name}</p>"
                 else:
-                    result = urllib.parse.urlparse(value_file)
+                    if os.path.isfile(value_file):
+                        pass
+                    else:
+                        result = urllib.parse.urlparse(value_file)
                     if not all([result.scheme, result.netloc, result.path]):
                         error = True
                         msg += f"<p>Ruta del fichero: {file_name} no válida</p>"
@@ -775,11 +778,26 @@ def _scrape_execution(url, month, year, files_json={}):
         temp_folder_path = _create_temp_folder()
 
         # We assume a constant page layout: ingresos, gastos, inversiones
-        _download(files[0], temp_folder_path, "ingresos.csv")
-        _download(files[1], temp_folder_path, "gastos.csv")
-        _download(files[2], temp_folder_path, "inversiones.csv")
-        _download(files[3], temp_folder_path, "ingresos_eliminaciones_bruto.csv")
-        _download(files[4], temp_folder_path, "gastos_eliminaciones_bruto.csv")
+        if os.path.isfile(files[0]):
+            os.rename(files[0], os.path.join(temp_folder_path, "ingresos.csv"))
+        else:
+            _download(files[0], temp_folder_path, "ingresos.csv")
+        if os.path.isfile(files[0]):
+            os.rename(files[0], os.path.join(temp_folder_path, "gastos.csv"))
+        else:
+            _download(files[1], temp_folder_path, "gastos.csv")
+        if os.path.isfile(files[0]):
+            os.rename(files[0], os.path.join(temp_folder_path, "inversiones.csv"))
+        else:
+            _download(files[2], temp_folder_path, "inversiones.csv")
+        if os.path.isfile(files[0]):
+            os.rename(files[0], os.path.join(temp_folder_path, "ingresos_eliminaciones_bruto.csv"))
+        else:
+            _download(files[3], temp_folder_path, "ingresos_eliminaciones_bruto.csv")
+        if os.path.isfile(files[0]):
+            os.rename(files[0], os.path.join(temp_folder_path, "gastos_eliminaciones_bruto.csv"))
+        else:
+            _download(files[4], temp_folder_path, "gastos_eliminaciones_bruto.csv")
 
         _write_temp(temp_folder_path, ".budget_month", month)
         _write_temp(temp_folder_path, ".budget_year", year)
